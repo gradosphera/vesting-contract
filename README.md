@@ -1,28 +1,28 @@
-# Vesting contract
+# Контракт на вестинг
 
-This contract allows you to lock a certain amount of Toncoin for a specified time and gradually unlock them.
+Этот контракт позволяет вам заблокировать определенное количество Toncoin на определенное время и постепенно разблокировать их.
 
-## Vesting parameters
+## Параметры вестинга
 
-Vesting parameters are unchanged and is set during deployment.
+Параметры вестинга не изменяются и устанавливаются во время развертывания.
 
-`vesting_total_amount` - in nanotons, the total amount of locked Toncoins.
+`vesting_total_amount` - в nanoton, общее количество заблокированных Toncoin.
 
-`vesting_start_time` - unixtime, the starting point of the vesting period, until this moment the `vesting_total_amount` is locked, after that it starts to unlock according to other parameters.
+`vesting_start_time` - unixtime, начальная точка периода вестинга, до этого момента `vesting_total_amount` заблокирован, после этого он начинает разблокироваться в соответствии с другими параметрами.
 
-`vesting_total_duration` - total vesting duration in seconds (e.g. `31104000` for one year).
+`vesting_total_duration` - общая продолжительность вестинга в секундах (например, `31104000` на один год).
 
-`unlock_period` - unlock period in seconds (e.g. `2592000` for once a month).
+`unlock_period` - период разблокировки в секундах (например, `2592000` один раз в месяц).
 
-`cliff_duration` - starting cliff period in seconds (e.g. `5184000` for 2 months).
+`cliff_duration` - начальный период без разблокировки в секундах (например, `5184000` на 2 месяца).
 
-`vesting_sender_address` - the address to which you can return the Toncoins (even if they are locked) at any time; also this address can append the whitelist.
+`vesting_sender_address` - адрес, на который вы можете вернуть Toncoin (даже если они заблокированы) в любое время; также этот адрес может добавить белый список.
 
-`owner_address` - the one to whom the vesting was issued, from this address, he can initiate the sending of Toncoins from the vesting contract.
+`owner_address` - тот, кому был выдан вестинг, с этого адреса он может инициировать отправку Toncoin из контракта вестинга.
 
-You can get this parameters by `get_vesting_data()` get-method.
+Вы можете получить эти параметры с помощью метода `get_vesting_data()`.
 
-The parameters must satisfy the following conditions:
+Параметры должны удовлетворять следующим условиям::
 
 ```
 vesting_total_duration > 0
@@ -35,130 +35,117 @@ vesting_total_duration mod unlock_period == 0
 cliff_duration mod unlock_period == 0
 ```
 
-Although the smart contract does not check for compliance with these conditions, after the contract is deployed and before sending Toncoins to it, the user can verify that all parameters are OK by get-method.
+Хотя смарт-контракт не проверяет соответствие этим условиям, после развертывания контракта и перед отправкой ему Toncoin пользователь может проверить, что все параметры в порядке, с помощью метода get-method.
 
-## Lock
+## Блокировка
 
-Before the `vesting_start_time`, all `vesting_total_amount` are locked.
+До `vesting_start_time`, все `vesting_total_amount` заблокированы.
 
-Starting from `vesting_start_time` the amount starts to unlock proportionately.
+Начиная с `vesting_start_time` сумма начинает пропорционально разблокироваться.
 
-For example if `vesting_total_duration` is 10 months, and `unlock_period` is 1 month, and `vesting_total_amount` is 500 TON then every month will unlock 500*(10/100)=50 TON, and in 10 months all 500 TON will be unlocked.
+Например, если `vesting_total_duration` составляет 10 месяцев, а `unlock_period` - 1 месяц, а `vesting_total_amount` - 500 TON, то каждый месяц будет разблокироваться 500*(10/100)=50 TON, и через 10 месяцев будут разблокированы все 500 TON.
 
-If there is a cliff period, nothing is unlocked during this cliff period, and after it has passed, the amount is unlocked according to the formula above.
+Если есть период без разблокировки, в течение этого периода ничего не разблокируется, а после его окончания сумма разблокируется в соответствии с приведенной выше формулой.
 
-For example if `cliff_period` is 3 months, and the other parameters are the same as in the previous example, then first 3 months nothing will be unlocked and on 3 months 150 TON will be unlocked at once (and then 50 TON every month).
+Например, если `cliff_period` составляет 3 месяца, а другие параметры такие же, как в предыдущем примере, то первые 3 месяца ничего не будет разблокировано, а через 3 месяца сразу будет разблокировано 150 TON (а затем по 50 TON каждый месяц).
 
-Get-method `get_locked_amount(int at_time)` allows you to calculate how much will be locked at a certain point in time.
+Метод получения `get_locked_amount(int at_time)` позволяет рассчитать, сколько будет заблокировано в определенный момент времени.
 
-You can only send the locked Toncoins to the whitelist addresses or `vesting_sender_address`.
+Вы можете отправлять заблокированные Toncoin только на адреса из белого списка или `vesting_sender_address`.
 
-You can send the unlocked Toncoins whenever and wherever you like.
+Вы можете отправлять разблокированные Toncoin когда и куда захотите.
 
-## Whitelist
+## Белый список
 
-Whitelist is a list of addresses to which you can send Toncoins, even if coins are still locked.
+Белый список — это список адресов, на которые вы можете отправлять Toncoin, даже если монеты все еще заблокированы.
 
-Get-method `get_whitelist()` returns all whitelist addresses as list of (wc, hash_part) tuples.
+Метод получения `get_whitelist()` возвращает все адреса из белого списка в виде списка кортежей (wc, hash_part).
 
-Get-method `is_whitelisted(slice address)` checks to see if this address is on the whitelist.
+Метод получения `is_whitelisted(slice address)` проверяет, находится ли этот адрес в белом списке.
 
-`vesting_sender_address` can append new addresses to whitelist at any time by `op::add_whitelist` message.
+`vesting_sender_address` может добавлять новые адреса в белый список в любое время с помощью сообщения `op::add_whitelist`.
 
-Unable to remove an address from the whitelist.
+Невозможно удалить адрес из белого списка.
 
-Also, locked coins can always be sent to the `vesting_sender_address` (it doesn't need to be added to the whitelist separately).
+Кроме того, заблокированные монеты всегда можно отправлять на `vesting_sender_address` (их не нужно отдельно добавлять в белый список).
 
-## Top-up
+## Пополнение
 
-You can send Toncoins to vesting contract from any address.
+Вы можете отправлять Toncoin в контракт вестинга с любого адреса.
 
-## Wallet smart contract
+## Смарт-контракт кошелька
 
-This contract is designed similar to the [standard wallet V3 smart contract](https://github.com/ton-blockchain/ton/blob/master/crypto/smartcont/wallet3-code.fc).
+Этот контракт разработан аналогично [стандартному смарт-контракту кошелька V3](https://github.com/ton-blockchain/ton/blob/master/crypto/smartcont/wallet3-code.fc).
 
-In his data, he keeps `seqno`, `subwallet_id`, `public_key` and accepts external messages of the same format.
+В своих данных он хранит `seqno`, `subwallet_id`, `public_key` и принимает внешние сообщения того же формата.
 
-Get-methods `seqno()`, `get_subwallet_id()` and `get_public_key()` are available.
+Доступны методы получения `seqno()`, `get_subwallet_id()` и `get_public_key()`.
 
-Unlike a standard wallet, vesting contract allows you to send only one message at a time.
+В отличие от стандартного кошелька, контракт вестинга позволяет отправлять только одно сообщение за раз.
 
-## Send
+## Отправка
 
-The owner of the public key can initiate the sending of Toncoins from the vesting contract by an external message, just like in standard wallets.
+Владелец открытого ключа может инициировать отправку Toncoin из контракта вестинга внешним сообщением, как в стандартных кошельках.
 
-The Toncoin sending can also be initiated by an `op::send` internal message sent from the `owner_address`.
+Отправка Toncoin также может быть инициирована внутренним сообщением `op::send`, отправленным с `owner_address`.
 
-In practice, both the public key and the `owner_address` are owned by the same user.
+На практике и открытый ключ, и `owner_address` принадлежат одному и тому же пользователю.
 
-## Whitelist restrictions
+## Ограничения в отношении белого списка
 
-Messages that can be sent to the `vesting_sender_address` have the following restrictions:
+Сообщения, которые можно отправлять на `vesting_sender_address`, имеют следующие ограничения:
 
-- only `send_mode == 3` allowed;
+- разрешен только `send_mode == 3`;
 
+В большинстве случаев адреса добавляются в белый список, чтобы позволить пользователю выполнять проверку с помощью заблокированных монет или закладывать заблокированные монеты в пулы.
 
-In most cases, addresses are added to the whitelist to allow the user to validate using locked coins or to stake locked coins into the pools.
+Чтобы избежать кражи Toncoin, сообщения, которые можно отправлять в белый список, имеют следующие ограничения:
 
-To avoid theft of Toncoins, messages that can be sent to the whitelist have the following restrictions:
+- разрешен только `send_mode == 3`;
 
-- only `send_mode == 3` allowed;
+- разрешены только сообщения с возможностью возврата;
 
-- only bounceable messages allowed;
+- не разрешено вложение `state_init`;
 
-- no `state_init` attachment allowed;
+Если пункт назначения — адрес системного избирателя:
 
-If destination is system elector address:
+- разрешены только операции `op::elector_new_stake`, `op::elector_recover_stake`, `op::vote_for_complaint`, `op::vote_for_proposal`;
 
-- only `op::elector_new_stake`, `op::elector_recover_stake`, `op::vote_for_complaint`, `op::vote_for_proposal` operations allowed;
+Если пункт назначения — адрес системной конфигурации:
 
-If destination is system config address:
+- разрешена только операция `op::vote_for_proposal`;
 
-- only `op::vote_for_proposal` operation allowed;
+Для других пунктов назначения:
 
-For other destinations:
+- разрешены пустые сообщения и пустые текстовые сообщения;
+- разрешены текстовые сообщения, начинающиеся только с "d", "w", "D", "W";
+- разрешены операции `op::single_nominator_pool_withdraw`, `op::single_nominator_pool_change_validator`, `op::ton_stakers_deposit`, `op::jetton_burn`, `op::ton_stakers_vote`, `op::vote_for_proposal`, `op::vote_for_complaint`;
 
-- allowed empty messages and empty text messages;
-- allowed text messages starts only with "d", "w", "D", "W";
-- allowed `op::single_nominator_pool_withdraw`, `op::single_nominator_pool_change_validator`, `op::ton_stakers_deposit`, `op::jetton_burn`, `op::ton_stakers_vote`, `op::vote_for_proposal`, `op::vote_for_complaint` operations;
+Нет ограничений на адреса, не включенные в белый список.
 
-There are no restrictions on addresses not included in the whitelist.
+Никаких ограничений не применяется при отправке разблокированных Toncoin, даже если мы отправляем в белый список или `vesting_sender_address`.
 
-No restrictions apply when sending unlocked Toncoins, even if we send to whitelist or `vesting_sender_address`.
+## Структура проекта
 
-## Project structure
+- `contracts` - исходный код всех смарт-контрактов проекта и их зависимостей.
+- `wrappers` - классы-обертки (реализующие `Contract` из ton-core) для контрактов, включая любые примитивы [де]сериализации и функции компиляции.
+- `tests` - тесты для контрактов.
+- `scripts` - скрипты, используемые проектом, в основном скрипты развертывания.
 
--   `contracts` - source code of all the smart contracts of the project and their dependencies.
--   `wrappers` - wrapper classes (implementing `Contract` from ton-core) for the contracts, including any [de]serialization primitives and compilation functions.
--   `tests` - tests for the contracts.
--   `scripts` - scripts used by the project, mainly the deployment scripts.
+## Как использовать
 
-## How to use
+### Сборка
 
-### Build
+`npx blueprint build` или `yarn blueprint build`.
 
-`npx blueprint build` or `yarn blueprint build`
+### Тестирование
 
-### Test
+`npx blueprint test` или `yarn blueprint test`.
 
-`npx blueprint test` or `yarn blueprint test`
+### Развертывание или запуск другого скрипта
 
-### Deploy or run another script
+`npx blueprint run` или `yarn blueprint run`.
 
-`npx blueprint run` or `yarn blueprint run`
+### Добавить новый контракт
 
-### Add a new contract
-
-`npx blueprint create ContractName` or `yarn blueprint create ContractName`
-
-## Security
-
-The vesting contract has been created by TON Core team and audited by security companies:
-
-- Zellic: [Audit Report](https://github.com/ton-blockchain/vesting-contract/blob/main/audits/Vesting%20Wallet%20-%20Zellic%20Audit%20Report%20-%20final.pdf)
-- CertiK: [Audit Report](https://github.com/ton-blockchain/vesting-contract/blob/main/audits/Vesting%20REP-final-20220805T101405Z.pdf)
-
-Feel free to review these reports for a detailed understanding of the contract's security measures.
-
-# License
-MIT
+`npx blueprint create ContractName` или `yarn blueprint create ContractName`.
